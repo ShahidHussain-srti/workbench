@@ -5,8 +5,9 @@ The shared parts behind my browser-based maker tools,
 [Keychain Studio](https://shahidhussain-srti.github.io/keychains/). Anything both of them
 needed ended up written twice, so it lives here now, and the next tool can start from it.
 
-It's plain JavaScript with no dependencies and no build step for the apps. Everything
-hangs off one global, `WB`.
+It's plain JavaScript with no build step for the apps. Everything hangs off one global,
+`WB`. The only third-party piece is the Manifold geometry engine, repackaged in
+`vendor/manifold.js` so it runs from a double-clicked `index.html`.
 
 ## What's in it
 
@@ -23,6 +24,7 @@ hangs off one global, `WB`.
 | `share.js` | Designs packed into a link (`#d=…`), the share popup, and clipboard helpers |
 | `drawpad.js` | A freehand drawing pad in a modal |
 | `viewer.js` | A WebGL viewer with orbit controls, smooth shading within a crease angle, bump-shaded textures, overlay lines, and hooks for posing parts and handling clicks |
+| `engine.js` | Starts the bundled [Manifold](https://github.com/elalish/manifold) geometry engine (`WB.loadManifold()`) and turns its solids into parts |
 | `ui.js` | Number fields you can drag like Unity's inspector, the warnings strip, undo/redo, and saving the design across refreshes |
 | `css/workbench.css` | The shared look: colour tokens with a light theme, panels, form controls, panes, popups |
 
@@ -44,6 +46,7 @@ load the two files before the app's own:
 <link rel="stylesheet" href="vendor/workbench/workbench.css">
 <link rel="stylesheet" href="styles.css">
 …
+<script src="vendor/workbench/manifold.js"></script>   <!-- if the app builds solids -->
 <script src="vendor/workbench/workbench.js"></script>
 <script src="src/app.js"></script>
 ```
@@ -75,7 +78,8 @@ already placed where it should print.
 contours, ZIP, 3MF structure, STL and share links. The canvas-based parts (text,
 pictures, the drawing pad, the UI pieces) are tested through the apps.
 
-`dist/` is committed so the built files are always there to copy.
+`dist/` is committed so the built files are always there to copy. `npm run vendor`
+rebuilds `vendor/manifold.js` after changing the `manifold-3d` version in `package.json`.
 
 ## License
 
@@ -85,3 +89,7 @@ Workbench is free software under the **GNU General Public License v3.0 or later*
 use it, change it and share it. If you distribute something built from it, including
 hosting it on a website, that has to be GPL with its source available too. There's no
 warranty. See [LICENSE](LICENSE) for the full text.
+
+`vendor/manifold.js` is [Manifold](https://github.com/elalish/manifold), © The Manifold
+Authors, under the Apache License 2.0 ([vendor/LICENSE-manifold.txt](vendor/LICENSE-manifold.txt)),
+which is compatible with the GPL.

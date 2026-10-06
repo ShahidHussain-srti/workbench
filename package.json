@@ -2,12 +2,16 @@
   "name": "workbench",
   "version": "0.1.0",
   "private": true,
-  "description": "Shared parts for browser-based maker tools: masks and contours, text and picture decoration, multi-colour 3MF export, share links and UI pieces.",
+  "description": "Shared parts for browser-based maker tools: masks and contours, text and picture decoration, multi-colour 3MF export, share links, a 3D viewer, UI pieces, and the Manifold geometry engine packaged to run from file://.",
   "scripts": {
     "build": "node tools/build.mjs",
     "test": "node tools/build.mjs && node test/run.mjs",
-    "sync": "node tools/sync.mjs ../dabba ../keychains"
+    "sync": "node tools/sync.mjs ../dabba ../keychains",
+    "vendor": "node tools/vendor-manifold.mjs"
   },
   "license": "GPL-3.0-or-later",
-  "author": "shahidhussain2k13@gmail.com"
+  "author": "shahidhussain2k13@gmail.com",
+  "devDependencies": {
+    "manifold-3d": "3.5.4"
+  }
 }
