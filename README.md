@@ -22,6 +22,7 @@ hangs off one global, `WB`.
 | `zip.js` | The small ZIP writer the 3MF needs |
 | `share.js` | Designs packed into a link (`#d=…`), the share popup, and clipboard helpers |
 | `drawpad.js` | A freehand drawing pad in a modal |
+| `viewer.js` | A WebGL viewer with orbit controls, smooth shading within a crease angle, bump-shaded textures, overlay lines, and hooks for posing parts and handling clicks |
 | `ui.js` | Number fields you can drag like Unity's inspector, the warnings strip, undo/redo, and saving the design across refreshes |
 | `css/workbench.css` | The shared look: colour tokens with a light theme, panels, form controls, panes, popups |
 

@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 
 // Load order matters: base first, then what builds on it.
 export const JS = ['base.js', 'fonts.js', 'edt.js', 'contour.js', 'shapes.js', 'zip.js',
-                   'decor.js', 'export.js', 'share.js', 'drawpad.js', 'ui.js'];
+                   'decor.js', 'export.js', 'share.js', 'drawpad.js', 'ui.js', 'viewer.js'];
 export const CSS = ['workbench.css'];
 
 const stamp = `/* Workbench ${pkg.version} — https://github.com/ShahidHussain-srti/workbench\n` +
