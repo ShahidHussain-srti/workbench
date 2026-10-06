@@ -78,6 +78,33 @@ const files = unzip(buf);
 ok(files['a.txt'] === 'hello hello hello hello' && files['dir/b.txt'] === 'world', 'zip round-trips');
 ok(WB.crc32(new TextEncoder().encode('hello')) >>> 0 === 0x3610a686, 'crc32');
 
+section('3MF export');
+const cube = (x0, color, colorIndex, label) => {
+  const P = [], I = [];
+  const v = [[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]].map(q => [q[0] * 10 + x0, q[1] * 10, q[2] * 10]);
+  v.forEach(q => P.push(...q));
+  [[0,2,1],[0,3,2],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]].forEach(t => I.push(...t));
+  return { positions: new Float32Array(P), indices: new Uint32Array(I), color, colorIndex, label };
+};
+const mf = await WB.export3MF({ app: 'Test App', title: 'two & things', objects: [
+  { name: 'left', parts: [cube(0, '#ff0000', 4, 'red'), cube(0, '#00ff00', 1, 'green')] },
+  { name: 'right', parts: [cube(20, '#00ff00', 1, 'green 2')] },
+  { name: 'empty', parts: [] }
+] });
+const z = unzip(Buffer.from(await mf.arrayBuffer()));
+const model = z['3D/3dmodel.model'], settings = z['Metadata/model_settings.config'], pe = z['Metadata/Slic3r_PE_model.config'];
+ok(model.includes('<metadata name="Application">Test App</metadata>') && model.includes('two &amp; things'), 'app and escaped title');
+ok((model.match(/<item /g) || []).length === 2, 'two build items (empty object dropped)');
+ok((model.match(/<component /g) || []).length === 3, 'three colour parts as components');
+const extr = [...settings.matchAll(/<part id="(\d+)"[\s\S]*?key="extruder" value="(\d+)"/g)].map(m => m[2]).join();
+ok(extr === '1,2,2', 'extruders numbered densely in order of use (palette 4 → 1, palette 1 → 2)');
+ok(model.includes('name="Colour 1" displaycolor="#FF0000FF"'), 'colour names follow extruder numbers');
+ok(pe.includes('firstid="0" lastid="11"') && pe.includes('firstid="12" lastid="23"'), 'PrusaSlicer triangle ranges per object');
+ok(JSON.parse(z['Metadata/project_settings.config']).filament_colour.join() === '#FF0000,#00FF00', 'filament swatches');
+const stl = Buffer.from(await WB.exportSTL([cube(-5, '#000', 0, 'a')], 'hdr').arrayBuffer());
+let minx = 1e9; for (let t = 0; t < 12; t++) for (let k = 0; k < 3; k++) minx = Math.min(minx, stl.readFloatLE(84 + t * 50 + 12 + k * 12));
+ok(stl.readUInt32LE(80) === 12 && minx === 0 && stl.slice(0, 3).toString() === 'hdr', 'STL: 12 triangles, moved to the origin, header');
+
 section('share links');
 const design = { app: 'test', state: { name: 'pump case', list: [1, 2, 3], nested: { a: 'ü✓' } } };
 const hash = await WB.shareEncode(design);
