@@ -122,13 +122,17 @@ window.WB = window.WB || {};
     o[last] = val;
   };
 
+  /* fn after `ms` of quiet; .now() runs it at once (dropping any wait), for
+     when there is nothing to wait for, such as the first build. */
   WB.debounce = function (fn, ms) {
     var t = 0;
-    return function () {
+    var d = function () {
       var args = arguments, self = this;
       clearTimeout(t);
       t = setTimeout(function () { fn.apply(self, args); }, ms);
     };
+    d.now = function () { clearTimeout(t); return fn.apply(this, arguments); };
+    return d;
   };
 
   WB.hexToRgb = function (hex) {
