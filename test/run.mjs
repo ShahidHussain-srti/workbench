@@ -23,6 +23,16 @@ export const section = name => console.log('\n' + name);
 section('base');
 ok(WB.clamp(5, 0, 3) === 3 && WB.clamp(-1, 0, 3) === 0, 'clamp');
 ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
+{
+  const base = { a: 1, b: { c: 2, d: [1, 2] }, e: 'x' }, obj = { a: 1, b: { c: 3, d: [1, 2] }, e: 'y', f: 0.123456 };
+  const d = WB.shareDiff(base, obj);
+  ok(JSON.stringify(d) === '{"b":{"c":3},"e":"y","f":0.1235}', 'shareDiff keeps only the changes');
+  const back = WB.sharePatch(base, d);
+  ok(back.a === 1 && back.b.c === 3 && back.b.d.length === 2 && back.e === 'y', 'sharePatch lays them back over the defaults');
+  ok(WB.shareDiff(base, JSON.parse(JSON.stringify(base))) === undefined, 'no changes, no diff');
+  const evil = WB.sharePatch({}, JSON.parse('{"__proto__":{"polluted":1}}'));
+  ok(({}).polluted === undefined && evil.polluted === undefined, 'sharePatch ignores __proto__');
+}
 ok(WB.borderReach({ style: 'double', shape: 'follow', inset: 1, width: 0.8, gap: 0.6 }) === 3.2 &&
    WB.borderReach({ style: 'none' }) === 0, 'borderReach: where the border ink ends inside the plate');
 {

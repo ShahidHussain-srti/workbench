@@ -460,7 +460,7 @@ window.WB = window.WB || {};
   /* Fit the bounding sphere in whichever field of view is narrower. */
   WB.Viewer.prototype.fit = function () {
     var aspect = Math.max(0.2, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
-    var r = this.bed ? Math.max(this.radius, Math.hypot(this.bed.w, this.bed.d) / 2 * 0.85) : this.radius;
+    var r = this.bed ? Math.max(this.radius, Math.hypot(this.bed.w, this.bed.d) / 2 * 0.95) : this.radius;
     this.dist = r / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
     this.pan = [0, 0];
     this._framed = this.radius;

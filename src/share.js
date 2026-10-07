@@ -6,6 +6,9 @@
  *
  *   #d=1.<base64url of deflate-raw JSON>   (browsers with CompressionStream)
  *   #d=0.<base64url of UTF-8 JSON>         (fallback, longer)
+ *
+ * Apps put only the changes from their defaults in the JSON (shareDiff), so a
+ * link grows with what was changed, not with every setting there is.
  */
 window.WB = window.WB || {};
 (function (WB) {
@@ -50,6 +53,41 @@ window.WB = window.WB || {};
       if (!canZip) throw new Error('this browser cannot unpack compressed links');
       return pipe(bytes, new DecompressionStream('deflate-raw'));
     }).then(function (bytes) { return JSON.parse(new TextDecoder().decode(bytes)); });
+  };
+
+  /* Links carry only what differs from the app's defaults; opening one lays
+     those changes back over the defaults. Objects compare key by key; arrays
+     and plain values are kept whole when they differ. Numbers are rounded to
+     4 decimals, which is far below print resolution. */
+  var tidy4 = function (v) { return typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v; };
+  var plain = function (v) { return v && typeof v === 'object' && !Array.isArray(v); };
+  var round = function (v) {
+    if (Array.isArray(v)) return v.map(round);
+    if (plain(v)) { var o = {}; Object.keys(v).forEach(function (k) { o[k] = round(v[k]); }); return o; }
+    return tidy4(v);
+  };
+  WB.shareDiff = function (base, obj) {
+    if (plain(base) && plain(obj)) {
+      var out = {}, any = false;
+      Object.keys(obj).forEach(function (k) {
+        var d = WB.shareDiff(base[k], obj[k]);
+        if (d !== undefined) { out[k] = d; any = true; }
+      });
+      return any ? out : undefined;
+    }
+    var r = round(obj);
+    return JSON.stringify(r) === JSON.stringify(round(base)) ? undefined : r;
+  };
+  WB.sharePatch = function (base, diff) {
+    if (diff === undefined) return base;
+    if (!plain(base) || !plain(diff)) return diff;
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    Object.keys(diff).forEach(function (k) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
+      out[k] = WB.sharePatch(base[k], diff[k]);
+    });
+    return out;
   };
 
   WB.shareBase = function () { return location.href.split('#')[0]; };

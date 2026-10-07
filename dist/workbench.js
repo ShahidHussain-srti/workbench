@@ -1760,6 +1760,9 @@ window.WB = window.WB || {};
  *
  *   #d=1.<base64url of deflate-raw JSON>   (browsers with CompressionStream)
  *   #d=0.<base64url of UTF-8 JSON>         (fallback, longer)
+ *
+ * Apps put only the changes from their defaults in the JSON (shareDiff), so a
+ * link grows with what was changed, not with every setting there is.
  */
 window.WB = window.WB || {};
 (function (WB) {
@@ -1804,6 +1807,41 @@ window.WB = window.WB || {};
       if (!canZip) throw new Error('this browser cannot unpack compressed links');
       return pipe(bytes, new DecompressionStream('deflate-raw'));
     }).then(function (bytes) { return JSON.parse(new TextDecoder().decode(bytes)); });
+  };
+
+  /* Links carry only what differs from the app's defaults; opening one lays
+     those changes back over the defaults. Objects compare key by key; arrays
+     and plain values are kept whole when they differ. Numbers are rounded to
+     4 decimals, which is far below print resolution. */
+  var tidy4 = function (v) { return typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v; };
+  var plain = function (v) { return v && typeof v === 'object' && !Array.isArray(v); };
+  var round = function (v) {
+    if (Array.isArray(v)) return v.map(round);
+    if (plain(v)) { var o = {}; Object.keys(v).forEach(function (k) { o[k] = round(v[k]); }); return o; }
+    return tidy4(v);
+  };
+  WB.shareDiff = function (base, obj) {
+    if (plain(base) && plain(obj)) {
+      var out = {}, any = false;
+      Object.keys(obj).forEach(function (k) {
+        var d = WB.shareDiff(base[k], obj[k]);
+        if (d !== undefined) { out[k] = d; any = true; }
+      });
+      return any ? out : undefined;
+    }
+    var r = round(obj);
+    return JSON.stringify(r) === JSON.stringify(round(base)) ? undefined : r;
+  };
+  WB.sharePatch = function (base, diff) {
+    if (diff === undefined) return base;
+    if (!plain(base) || !plain(diff)) return diff;
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    Object.keys(diff).forEach(function (k) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
+      out[k] = WB.sharePatch(base[k], diff[k]);
+    });
+    return out;
   };
 
   WB.shareBase = function () { return location.href.split('#')[0]; };
@@ -2732,8 +2770,11 @@ window.WB = window.WB || {};
      A faint plate with a 10 mm grid, darker every 50 mm, measured from its
      centre, and a firm outline. */
   WB.Viewer.prototype.setBed = function (b) {
+    var was = this.bed;
     this.bed = b && b.w > 0 && b.d > 0 ? b : null;
     this._uploadBed();
+    // Zoom to suit when it appears, changes size or goes away.
+    if (this.bed ? (!was || was.w !== this.bed.w || was.d !== this.bed.d) : was) this.fit();
   };
   WB.Viewer.prototype._uploadBed = function () {
     if (this.failed) return;
@@ -2871,7 +2912,8 @@ window.WB = window.WB || {};
   /* Fit the bounding sphere in whichever field of view is narrower. */
   WB.Viewer.prototype.fit = function () {
     var aspect = Math.max(0.2, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
-    this.dist = this.radius / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
+    var r = this.bed ? Math.max(this.radius, Math.hypot(this.bed.w, this.bed.d) / 2 * 0.95) : this.radius;
+    this.dist = r / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
     this.pan = [0, 0];
     this._framed = this.radius;
     this.fitted = true;      // keeps refitting as the canvas resizes, until you zoom or pan
@@ -2990,11 +3032,11 @@ window.WB = window.WB || {};
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.CULL_FACE);
     gl.depthMask(false);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.22);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.30);
     gl.drawArrays(gl.TRIANGLES, R.plate[0], R.plate[1]);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.28);
+    gl.uniform4f(this.lloc.color, 0.60, 0.66, 0.74, 0.40);
     if (R.minor[1]) gl.drawArrays(gl.LINES, R.minor[0], R.minor[1]);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.55);
+    gl.uniform4f(this.lloc.color, 0.60, 0.66, 0.74, 0.70);
     if (R.major[1]) gl.drawArrays(gl.LINES, R.major[0], R.major[1]);
     gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.9);
     gl.drawArrays(gl.LINES, R.edge[0], R.edge[1]);
