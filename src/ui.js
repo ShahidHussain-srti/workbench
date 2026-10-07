@@ -253,7 +253,7 @@ window.WB = window.WB || {};
         if (inTextEntry()) return;
         e.preventDefault(); self.undo();
       } else if ((k === 'z' && e.shiftKey) || k === 'y') {
-        if (inTextEntry() && k === 'z') return;
+        if (inTextEntry()) return;
         e.preventDefault(); self.redo();
       }
     });
