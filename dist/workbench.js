@@ -55,7 +55,7 @@ window.WB = window.WB || {};
       (list || []).forEach(function (l) {
         var v = typeof l === 'number' ? l : l.v, c = typeof l !== 'number' && l.centre;
         var hit = Math.abs(v - (a0 + a1) / 2) <= eps || (!c && (Math.abs(v - a0) <= eps || Math.abs(v - a1) <= eps));
-        if (hit && out.indexOf(v) < 0) out.push(v);
+        if (hit && !out.some(function (o) { return Math.abs(o - v) <= eps; })) out.push(v);
       });
       return out;
     };
@@ -1201,6 +1201,20 @@ window.WB = window.WB || {};
 
     return WB.mask.sealEdges(WB.mask.fromCanvas(o.canvas), g);
   }
+
+  /* How far in from the plate's edge the border's ink reaches, mm: what an
+     element dragged inside it lines up with. */
+  WB.borderReach = function (b) {
+    if (!b || b.style === 'none') return 0;
+    if (!STROKED[b.style]) {
+      return Math.max.apply(null, bandsFor(b).map(function (k) { return k[1]; }));
+    }
+    var amp = WAVY[b.style] ? Math.max(0.2, b.gap) : 0;
+    var centre = b.inset + (b.shape === 'follow' ? b.width / 2 + amp : 0);
+    var half = b.style === 'ticks' ? Math.max(b.width, b.gap * 1.2) / 2
+             : b.style === 'beads' ? b.width * 0.85 : b.width / 2 + amp;
+    return centre + half;
+  };
 
   WB.borderMask = function (b, fo, g, plate) {
     if (b.style === 'none') return null;

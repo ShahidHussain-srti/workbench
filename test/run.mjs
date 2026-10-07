@@ -23,6 +23,8 @@ export const section = name => console.log('\n' + name);
 section('base');
 ok(WB.clamp(5, 0, 3) === 3 && WB.clamp(-1, 0, 3) === 0, 'clamp');
 ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
+ok(WB.borderReach({ style: 'double', shape: 'follow', inset: 1, width: 0.8, gap: 0.6 }) === 3.2 &&
+   WB.borderReach({ style: 'none' }) === 0, 'borderReach: where the border ink ends inside the plate');
 {
   const lines = { x: [0, 10, { v: 20, centre: true }], y: [5] };
   const s1 = WB.snapBox({ x0: 9.4, x1: 12, y0: 0, y1: 2 }, lines, 1);
