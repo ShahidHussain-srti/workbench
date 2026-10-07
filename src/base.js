@@ -48,7 +48,7 @@ window.WB = window.WB || {};
       (list || []).forEach(function (l) {
         var v = typeof l === 'number' ? l : l.v, c = typeof l !== 'number' && l.centre;
         var hit = Math.abs(v - (a0 + a1) / 2) <= eps || (!c && (Math.abs(v - a0) <= eps || Math.abs(v - a1) <= eps));
-        if (hit && out.indexOf(v) < 0) out.push(v);
+        if (hit && !out.some(function (o) { return Math.abs(o - v) <= eps; })) out.push(v);
       });
       return out;
     };
