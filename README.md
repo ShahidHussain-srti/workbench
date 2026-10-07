@@ -7,7 +7,9 @@ needed ended up written twice, so it lives here now, and the next tool can start
 
 It's plain JavaScript with no build step for the apps. Everything hangs off one global,
 `WB`. The only third-party piece is the Manifold geometry engine, repackaged in
-`vendor/manifold.js` so it runs from a double-clicked `index.html`.
+`vendor/` so it runs from a double-clicked `index.html` as well as from a website: served
+over http(s), `manifold.wasm` is fetched and compiled as it downloads; from `file://`,
+where browsers refuse `fetch()`, its base64 copy `manifold-wasm.js` is loaded instead.
 
 ## What's in it
 
@@ -79,7 +81,8 @@ contours, ZIP, 3MF structure, STL and share links. The canvas-based parts (text,
 pictures, the drawing pad, the UI pieces) are tested through the apps.
 
 `dist/` is committed so the built files are always there to copy. `npm run vendor`
-rebuilds `vendor/manifold.js` after changing the `manifold-3d` version in `package.json`.
+rebuilds `vendor/manifold.js`, `manifold.wasm` and `manifold-wasm.js` after changing the
+`manifold-3d` version in `package.json`.
 
 ## License
 
@@ -90,6 +93,6 @@ use it, change it and share it. If you distribute something built from it, inclu
 hosting it on a website, that has to be GPL with its source available too. There's no
 warranty. See [LICENSE](LICENSE) for the full text.
 
-`vendor/manifold.js` is [Manifold](https://github.com/elalish/manifold), © The Manifold
-Authors, under the Apache License 2.0 ([vendor/LICENSE-manifold.txt](vendor/LICENSE-manifold.txt)),
+`vendor/manifold.js`, `manifold.wasm` and `manifold-wasm.js` are
+[Manifold](https://github.com/elalish/manifold), © The Manifold Authors, under the Apache License 2.0 ([vendor/LICENSE-manifold.txt](vendor/LICENSE-manifold.txt)),
 which is compatible with the GPL.
