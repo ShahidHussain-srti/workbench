@@ -48,7 +48,9 @@ window.WB = window.WB || {};
      `seed(i)` must return true where distance is zero. */
   function edt2d(cols, rows, seed) {
     var n = cols * rows;
-    var grid = new Float64Array(n);
+    // Squared pixel distances are whole numbers well inside float32's exact
+    // range, and half the memory to stream through is most of the speed.
+    var grid = new Float32Array(n);
     for (var i = 0; i < n; i++) grid[i] = seed(i) ? 0 : INF;
 
     var m = Math.max(cols, rows);
@@ -71,16 +73,18 @@ window.WB = window.WB || {};
   }
 
   /* Signed distance to the 0.5-isoline of `mask`, in millimetres.
-     Positive inside the shape, negative outside. */
-  WB.sdf = function (mask, g) {
+     Positive inside the shape, negative outside. With `insideOnly`, only the
+     inside is measured (half the work) and every outside cell reads as just
+     outside the edge, for callers that never look further out. */
+  WB.sdf = function (mask, g, insideOnly) {
     var n = g.cols * g.rows;
     var outside = edt2d(g.cols, g.rows, function (i) { return mask[i] < 0.5; });
-    var inside  = edt2d(g.cols, g.rows, function (i) { return mask[i] >= 0.5; });
+    var inside  = insideOnly ? null : edt2d(g.cols, g.rows, function (i) { return mask[i] >= 0.5; });
     var out = new Float32Array(n), s = 1 / g.ppmm;
     for (var i = 0; i < n; i++) {
       out[i] = mask[i] >= 0.5
         ?  (Math.sqrt(outside[i]) - 0.5) * s
-        : -(Math.sqrt(inside[i]) - 0.5) * s;
+        : inside ? -(Math.sqrt(inside[i]) - 0.5) * s : -0.5 * s;
     }
     return out;
   };

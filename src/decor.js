@@ -289,7 +289,7 @@ window.WB = window.WB || {};
       centred = true;     // bands straddle the outline instead of insetting
     }
 
-    var d = WB.sdf(src, g);
+    var d = WB.sdf(src, g, !centred);          // an inset border only looks inside
 
     if (STROKED[b.style]) {
       // centreline sits half a line width inside the nominal inset, plus the
