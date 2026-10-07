@@ -23,6 +23,15 @@ export const section = name => console.log('\n' + name);
 section('base');
 ok(WB.clamp(5, 0, 3) === 3 && WB.clamp(-1, 0, 3) === 0, 'clamp');
 ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
+{
+  const lines = { x: [0, 10, { v: 20, centre: true }], y: [5] };
+  const s1 = WB.snapBox({ x0: 9.4, x1: 12, y0: 0, y1: 2 }, lines, 1);
+  ok(s1.x && Math.abs(s1.dx - 0.6) < 1e-9 && !s1.y && s1.dy === 0, 'snapBox lands the nearest edge on a line');
+  const s2 = WB.snapBox({ x0: 18, x1: 20.5, y0: 4, y1: 6 }, lines, 1);
+  ok(Math.abs(s2.dx - 0.75) < 1e-9 && s2.y && s2.dy === 0, 'snapBox: centre-only lines take the centre, centres snap too');
+  const g = WB.boxGuides({ x0: 10, x1: 14, y0: 3, y1: 7 }, lines);
+  ok(g.x.join() === '10' && g.y.join() === '5', 'boxGuides lists the lines the box sits on');
+}
 const o = { a: { b: 1 } }; WB.set(o, 'a.b', 2);
 ok(WB.get(o, 'a.b') === 2 && WB.get(o, 'a.x.y') === undefined, 'get / set by path');
 ok(WB.newId('s') !== WB.newId('s'), 'ids are unique');
