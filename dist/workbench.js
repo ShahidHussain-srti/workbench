@@ -2582,6 +2582,7 @@ window.WB = window.WB || {};
     this.parts = [];
     this.poser = null;
     this.lines = null;
+    this.bed = null;
 
     // camera state
     this.az = this.view0.az;
@@ -2605,6 +2606,7 @@ window.WB = window.WB || {};
       self._setAtlases(srcs);
       self._upload();
       self._uploadLines();
+      self._uploadBed();
       self.draw();
     });
   };
@@ -2640,6 +2642,7 @@ window.WB = window.WB || {};
     };
     this.buf = gl.createBuffer();
     this.lbuf = gl.createBuffer();
+    this.bbuf = gl.createBuffer();
 
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
@@ -2723,6 +2726,43 @@ window.WB = window.WB || {};
   WB.Viewer.prototype.setLines = function (pts) {
     this.lines = pts && pts.length ? pts : null;
     this._uploadLines();
+  };
+
+  /* A print bed drawn under the model: { w, d, cx, cy, z } in mm, or null.
+     A faint plate with a 10 mm grid, darker every 50 mm, measured from its
+     centre, and a firm outline. */
+  WB.Viewer.prototype.setBed = function (b) {
+    this.bed = b && b.w > 0 && b.d > 0 ? b : null;
+    this._uploadBed();
+  };
+  WB.Viewer.prototype._uploadBed = function () {
+    if (this.failed) return;
+    this.bedRanges = null;
+    var b = this.bed;
+    if (!b) return;
+    var x0 = b.cx - b.w / 2, x1 = b.cx + b.w / 2, y0 = b.cy - b.d / 2, y1 = b.cy + b.d / 2;
+    var zp = b.z - 0.06, zl = b.z - 0.03, v = [];
+    v.push(x0, y0, zp, x1, y0, zp, x1, y1, zp, x0, y0, zp, x1, y1, zp, x0, y1, zp);
+    var grid = function (major) {
+      var n0 = v.length;
+      for (var k = -Math.floor(b.w / 20); k <= Math.floor(b.w / 20); k++) {
+        var x = b.cx + k * 10;
+        if ((k % 5 === 0) !== major || x <= x0 + 1e-6 || x >= x1 - 1e-6) continue;
+        v.push(x, y0, zl, x, y1, zl);
+      }
+      for (var j = -Math.floor(b.d / 20); j <= Math.floor(b.d / 20); j++) {
+        var y = b.cy + j * 10;
+        if ((j % 5 === 0) !== major || y <= y0 + 1e-6 || y >= y1 - 1e-6) continue;
+        v.push(x0, y, zl, x1, y, zl);
+      }
+      return (v.length - n0) / 3;
+    };
+    var minor = grid(false), major = grid(true);
+    v.push(x0, y0, zl, x1, y0, zl, x1, y0, zl, x1, y1, zl, x1, y1, zl, x0, y1, zl, x0, y1, zl, x0, y0, zl);
+    var gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bbuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+    this.bedRanges = { plate: [0, 6], minor: [6, minor], major: [6 + minor, major], edge: [6 + minor + major, 8] };
   };
 
   /* One GPU texture per atlas, re-uploaded only when the atlas itself changed
@@ -2869,9 +2909,16 @@ window.WB = window.WB || {};
     // Clip planes hug the model: a tight depth range keeps a 1 mm lid top from
     // flickering against the lettering on its far side.
     var reach = this.radius * 1.6 + Math.hypot(this.pan[0], this.pan[1]);
+    if (this.bedRanges) {                     // keep the whole bed inside the depth range
+      var bd = this.bed;
+      reach = Math.max(reach, Math.hypot(Math.abs(bd.cx - target[0]) + bd.w / 2, Math.abs(bd.cy - target[1]) + bd.d / 2,
+                                         bd.z - target[2]) + 5);
+    }
     var proj = perspective(0.62, w / h, Math.max(this.radius * 0.02, this.dist - reach), this.dist + reach);
     var view = lookAt(eye, target, [0, 0, 1]);
     this._mats = { proj: proj, view: view };
+
+    if (this.bedRanges) this._drawBed(proj, view);
 
     gl.useProgram(this.prog);
     gl.uniformMatrix4fv(this.loc.proj, false, proj);
@@ -2926,6 +2973,35 @@ window.WB = window.WB || {};
       gl.depthFunc(gl.LESS);
       gl.disableVertexAttribArray(this.lloc.pos);
     }
+  };
+
+  /* Under everything and translucent, so it reads on light and dark pages
+     and never hides the model; it writes no depth, so the model always draws
+     over it. */
+  WB.Viewer.prototype._drawBed = function (proj, view) {
+    var gl = this.gl, R = this.bedRanges;
+    gl.useProgram(this.lprog);
+    gl.uniformMatrix4fv(this.lloc.proj, false, proj);
+    gl.uniformMatrix4fv(this.lloc.view, false, view);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.bbuf);
+    gl.enableVertexAttribArray(this.lloc.pos);
+    gl.vertexAttribPointer(this.lloc.pos, 3, gl.FLOAT, false, 12, 0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.CULL_FACE);
+    gl.depthMask(false);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.22);
+    gl.drawArrays(gl.TRIANGLES, R.plate[0], R.plate[1]);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.28);
+    if (R.minor[1]) gl.drawArrays(gl.LINES, R.minor[0], R.minor[1]);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.55);
+    if (R.major[1]) gl.drawArrays(gl.LINES, R.major[0], R.major[1]);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.9);
+    gl.drawArrays(gl.LINES, R.edge[0], R.edge[1]);
+    gl.depthMask(true);
+    gl.enable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
+    gl.disableVertexAttribArray(this.lloc.pos);
   };
 
   /* ── shading ────────────────────────────────────────────────────── */

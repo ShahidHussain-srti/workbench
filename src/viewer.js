@@ -318,8 +318,11 @@ window.WB = window.WB || {};
      A faint plate with a 10 mm grid, darker every 50 mm, measured from its
      centre, and a firm outline. */
   WB.Viewer.prototype.setBed = function (b) {
+    var was = this.bed;
     this.bed = b && b.w > 0 && b.d > 0 ? b : null;
     this._uploadBed();
+    // Zoom to suit when it appears, changes size or goes away.
+    if (this.bed ? (!was || was.w !== this.bed.w || was.d !== this.bed.d) : was) this.fit();
   };
   WB.Viewer.prototype._uploadBed = function () {
     if (this.failed) return;
@@ -457,7 +460,8 @@ window.WB = window.WB || {};
   /* Fit the bounding sphere in whichever field of view is narrower. */
   WB.Viewer.prototype.fit = function () {
     var aspect = Math.max(0.2, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
-    this.dist = this.radius / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
+    var r = this.bed ? Math.max(this.radius, Math.hypot(this.bed.w, this.bed.d) / 2 * 0.85) : this.radius;
+    this.dist = r / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
     this.pan = [0, 0];
     this._framed = this.radius;
     this.fitted = true;      // keeps refitting as the canvas resizes, until you zoom or pan
@@ -576,11 +580,11 @@ window.WB = window.WB || {};
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.CULL_FACE);
     gl.depthMask(false);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.22);
+    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.30);
     gl.drawArrays(gl.TRIANGLES, R.plate[0], R.plate[1]);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.28);
+    gl.uniform4f(this.lloc.color, 0.60, 0.66, 0.74, 0.40);
     if (R.minor[1]) gl.drawArrays(gl.LINES, R.minor[0], R.minor[1]);
-    gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.55);
+    gl.uniform4f(this.lloc.color, 0.60, 0.66, 0.74, 0.70);
     if (R.major[1]) gl.drawArrays(gl.LINES, R.major[0], R.major[1]);
     gl.uniform4f(this.lloc.color, 0.52, 0.58, 0.66, 0.9);
     gl.drawArrays(gl.LINES, R.edge[0], R.edge[1]);
