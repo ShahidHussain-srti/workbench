@@ -78,6 +78,17 @@ window.WB = window.WB || {};
     var r = round(obj);
     return JSON.stringify(r) === JSON.stringify(round(base)) ? undefined : r;
   };
+  /* An item in a list (a text, a compartment) as only what differs from a
+     fresh one, without the keys in `drop`; the app's loader fills the rest
+     back in from a fresh one. */
+  WB.shareTrim = function (o, fresh, drop) {
+    var out = {};
+    Object.keys(o).forEach(function (k) {
+      if (drop && drop.indexOf(k) >= 0) return;
+      if (JSON.stringify(round(o[k])) !== JSON.stringify(round(fresh[k]))) out[k] = o[k];
+    });
+    return out;
+  };
   WB.sharePatch = function (base, diff) {
     if (diff === undefined) return base;
     if (!plain(base) || !plain(diff)) return diff;
