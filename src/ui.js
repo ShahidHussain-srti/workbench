@@ -96,6 +96,36 @@ window.WB = window.WB || {};
     });
   };
 
+  /* A bar pinned to the top of the sidebar with one button that folds every
+     section shut, or opens them all again when they are all shut. */
+  WB.addCollapseAll = function (sidebar) {
+    if (!sidebar || sidebar.querySelector('.sidebar-tools')) return;
+    var bar = document.createElement('div');
+    bar.className = 'sidebar-tools';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ghost';
+    bar.appendChild(b);
+    sidebar.insertBefore(bar, sidebar.firstChild);
+    var panels = function () { return sidebar.querySelectorAll('.panel'); };
+    var allShut = function () { return ![].some.call(panels(), function (p) { return p.classList.contains('open'); }); };
+    var paint = function () {
+      var shut = allShut();
+      b.textContent = shut ? '▾ Expand all' : '▴ Collapse all';
+      b.title = shut ? 'Open every section' : 'Fold every section shut';
+    };
+    b.addEventListener('click', function () {
+      var open = allShut();
+      [].forEach.call(panels(), function (p) { p.classList.toggle('open', open); });
+      paint();
+    });
+    // A section opened or shut any other way changes what the button offers.
+    if (typeof MutationObserver === 'function') {
+      new MutationObserver(paint).observe(sidebar, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+    paint();
+  };
+
   /* The bound settings in a panel, as paths: data-bind and data-numfor. */
   WB.panelPaths = function (panel) {
     var seen = {}, out = [];
