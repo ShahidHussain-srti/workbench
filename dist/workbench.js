@@ -2241,6 +2241,36 @@ window.WB = window.WB || {};
     });
   };
 
+  /* A bar pinned to the top of the sidebar with one button that folds every
+     section shut, or opens them all again when they are all shut. */
+  WB.addCollapseAll = function (sidebar) {
+    if (!sidebar || sidebar.querySelector('.sidebar-tools')) return;
+    var bar = document.createElement('div');
+    bar.className = 'sidebar-tools';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ghost';
+    bar.appendChild(b);
+    sidebar.insertBefore(bar, sidebar.firstChild);
+    var panels = function () { return sidebar.querySelectorAll('.panel'); };
+    var allShut = function () { return ![].some.call(panels(), function (p) { return p.classList.contains('open'); }); };
+    var paint = function () {
+      var shut = allShut();
+      b.textContent = shut ? '▾ Expand all' : '▴ Collapse all';
+      b.title = shut ? 'Open every section' : 'Fold every section shut';
+    };
+    b.addEventListener('click', function () {
+      var open = allShut();
+      [].forEach.call(panels(), function (p) { p.classList.toggle('open', open); });
+      paint();
+    });
+    // A section opened or shut any other way changes what the button offers.
+    if (typeof MutationObserver === 'function') {
+      new MutationObserver(paint).observe(sidebar, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+    paint();
+  };
+
   /* The bound settings in a panel, as paths: data-bind and data-numfor. */
   WB.panelPaths = function (panel) {
     var seen = {}, out = [];
@@ -2700,10 +2730,12 @@ window.WB = window.WB || {};
 
   WB.Viewer.prototype._bindControls = function () {
     var self = this, canvas = this.canvas;
-    var down = false, lastX = 0, lastY = 0, shift = false, travel = 0;
+    var down = false, lastX = 0, lastY = 0, shift = false, travel = 0, button = 0;
 
+    // Right-drag pans, so the browser's menu must not open at the end of it.
+    canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     canvas.addEventListener('pointerdown', function (e) {
-      down = true; shift = e.shiftKey; travel = 0;
+      down = true; shift = e.shiftKey; travel = 0; button = e.button;
       lastX = e.clientX; lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
       canvas.classList.add('dragging');
@@ -2713,7 +2745,7 @@ window.WB = window.WB || {};
       var dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
       travel += Math.abs(dx) + Math.abs(dy);
-      if (shift || e.buttons === 4) {
+      if (shift || button === 1 || button === 2) {           // shift, middle or right: pan
         var k = self.dist * 0.0016;
         var c = Math.cos(self.az), s = Math.sin(self.az);
         self.fitted = false;
@@ -2728,7 +2760,7 @@ window.WB = window.WB || {};
       self.draw();
     });
     var end = function (e) {
-      if (down && travel < 4 && e.type === 'pointerup') { var ray = self.ray(e); if (ray) self.onClick(ray, e); }
+      if (down && travel < 4 && e.type === 'pointerup' && button === 0) { var ray = self.ray(e); if (ray) self.onClick(ray, e); }
       down = false;
       canvas.classList.remove('dragging');
       if (e.pointerId != null && canvas.hasPointerCapture(e.pointerId)) {

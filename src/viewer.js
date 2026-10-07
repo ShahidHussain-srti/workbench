@@ -237,10 +237,12 @@ window.WB = window.WB || {};
 
   WB.Viewer.prototype._bindControls = function () {
     var self = this, canvas = this.canvas;
-    var down = false, lastX = 0, lastY = 0, shift = false, travel = 0;
+    var down = false, lastX = 0, lastY = 0, shift = false, travel = 0, button = 0;
 
+    // Right-drag pans, so the browser's menu must not open at the end of it.
+    canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     canvas.addEventListener('pointerdown', function (e) {
-      down = true; shift = e.shiftKey; travel = 0;
+      down = true; shift = e.shiftKey; travel = 0; button = e.button;
       lastX = e.clientX; lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
       canvas.classList.add('dragging');
@@ -250,7 +252,7 @@ window.WB = window.WB || {};
       var dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
       travel += Math.abs(dx) + Math.abs(dy);
-      if (shift || e.buttons === 4) {
+      if (shift || button === 1 || button === 2) {           // shift, middle or right: pan
         var k = self.dist * 0.0016;
         var c = Math.cos(self.az), s = Math.sin(self.az);
         self.fitted = false;
@@ -265,7 +267,7 @@ window.WB = window.WB || {};
       self.draw();
     });
     var end = function (e) {
-      if (down && travel < 4 && e.type === 'pointerup') { var ray = self.ray(e); if (ray) self.onClick(ray, e); }
+      if (down && travel < 4 && e.type === 'pointerup' && button === 0) { var ray = self.ray(e); if (ray) self.onClick(ray, e); }
       down = false;
       canvas.classList.remove('dragging');
       if (e.pointerId != null && canvas.hasPointerCapture(e.pointerId)) {
