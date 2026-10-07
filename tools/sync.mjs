@@ -21,7 +21,7 @@ for (const app of apps) {
   const out = join(resolve(app), 'vendor/workbench');
   mkdirSync(out, { recursive: true });
   for (const f of ['workbench.js', 'workbench.css']) copyFileSync(join(root, 'dist', f), join(out, f));
-  for (const f of ['manifold.js', 'LICENSE-manifold.txt']) copyFileSync(join(root, 'vendor', f), join(out, f));
+  for (const f of ['manifold.js', 'manifold.wasm', 'manifold-wasm.js', 'LICENSE-manifold.txt']) copyFileSync(join(root, 'vendor', f), join(out, f));
   copyFileSync(join(root, 'LICENSE'), join(out, 'LICENSE'));
   writeFileSync(join(out, 'VERSION'), `${pkg.version}${commit ? ' (' + commit + ')' : ''}\n`);
   console.log('synced', pkg.version, commit, '→', out);
