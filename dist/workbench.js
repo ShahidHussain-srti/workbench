@@ -2685,14 +2685,17 @@ window.WB = window.WB || {};
       var cur = this._entry(this.id);
       if (cur && (cur.rev || 0) !== this.rev) this._fork();
     }
-    if (this.forked) {
+    // Kept for the first time (new, copied or forked): under a name of its own.
+    if (!this.id) {
       this.forked = false;
-      var nm = this.uniqueName(String((payload.state && payload.state.name) || 'Untitled'));
-      if (payload.state) payload.state.name = nm;
-      if (this.opts.rename) this.opts.rename(nm);
-      json = JSON.stringify(payload);
+      var was = String((payload.state && payload.state.name) || 'Untitled'), nm = this.uniqueName(was);
+      if (nm !== was && payload.state) {
+        payload.state.name = nm;
+        if (this.opts.rename) this.opts.rename(nm);
+        json = JSON.stringify(payload);
+      }
+      this._use(WB.newId('d'), 0);
     }
-    if (!this.id) this._use(WB.newId('d'), 0);
     var id = this.id, name = String((payload.state && payload.state.name) || 'Untitled'), rev = this.rev + 1;
     var l = this._index().filter(function (d) { return d.id !== id; });
     l.push({ id: id, name: name, t: Date.now(), rev: rev });
