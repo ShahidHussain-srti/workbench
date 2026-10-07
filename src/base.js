@@ -50,8 +50,9 @@ window.WB = window.WB || {};
      the app keeps those in range itself. */
   WB.fieldLimits = function (root, skip) {
     var out = [], seen = {};
-    Array.prototype.forEach.call((root || document).querySelectorAll('input[type=number][data-bind], input[type=range][data-bind]'), function (el) {
-      var p = el.dataset.bind;
+    var sel = 'input[type=number][data-bind], input[type=range][data-bind], input[type=number][data-numfor]';
+    Array.prototype.forEach.call((root || document).querySelectorAll(sel), function (el) {
+      var p = el.dataset.bind || el.dataset.numfor;
       if (seen[p] || el.dataset.range != null || (skip && skip.indexOf(el.id) >= 0) || el.min === '' || el.max === '') return;
       var lo = parseFloat(el.min), hi = parseFloat(el.max), k = +el.dataset.scale || 1;
       if (!isFinite(lo) || !isFinite(hi)) return;
