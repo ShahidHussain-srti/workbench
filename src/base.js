@@ -62,11 +62,12 @@ window.WB = window.WB || {};
     return out;
   };
   /* o[key] kept a finite number within [min, max]; anything else becomes
-     the fallback. Nulls (meaning "automatic") are left alone. */
+     the fallback (which may be null, "automatic"), if one is given. Nulls
+     themselves are left alone. */
   WB.clampField = function (o, key, min, max, fallback) {
     if (!o || typeof o !== 'object' || !(key in o) || o[key] === null) return;
     var v = o[key];
-    if (typeof v !== 'number' || !isFinite(v)) { if (typeof fallback === 'number') o[key] = fallback; return; }
+    if (typeof v !== 'number' || !isFinite(v)) { if (fallback !== undefined) o[key] = fallback; return; }
     o[key] = v < min ? min : v > max ? max : v;
   };
 

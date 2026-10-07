@@ -41,6 +41,8 @@ ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
   const back = WB.sharePatch(base, d);
   ok(back.a === 1 && back.b.c === 3 && back.b.d.length === 2 && back.e === 'y', 'sharePatch lays them back over the defaults');
   ok(WB.shareDiff(base, JSON.parse(JSON.stringify(base))) === undefined, 'no changes, no diff');
+  const dropped = WB.sharePatch({ m: { a: 1 }, k: 2 }, WB.shareDiff({ m: { a: 1 }, k: 2 }, { m: {}, k: 2 }));
+  ok(JSON.stringify(dropped.m) === '{}', 'an emptied object survives the round trip');
   const evil = WB.sharePatch({}, JSON.parse('{"__proto__":{"polluted":1}}'));
   ok(({}).polluted === undefined && evil.polluted === undefined, 'sharePatch ignores __proto__');
 }

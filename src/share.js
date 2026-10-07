@@ -68,6 +68,12 @@ window.WB = window.WB || {};
   };
   WB.shareDiff = function (base, obj) {
     if (plain(base) && plain(obj)) {
+      // A key the defaults have and this doesn't can't be said as a change:
+      // send the object whole, so patching doesn't bring the key back.
+      if (Object.keys(base).some(function (k) { return !(k in obj); })) {
+        var whole = round(obj); whole['~'] = 1;             // marked: replace, don't merge
+        return whole;
+      }
       var out = {}, any = false;
       Object.keys(obj).forEach(function (k) {
         var d = WB.shareDiff(base[k], obj[k]);
@@ -93,6 +99,12 @@ window.WB = window.WB || {};
     if (diff === undefined) return base;
     if (!plain(base) || !plain(diff)) return diff;
     var out = {};
+    if (diff['~'] === 1) {                                  // a whole object, as it was sent
+      Object.keys(diff).forEach(function (k) {
+        if (k !== '~' && k !== '__proto__' && k !== 'constructor' && k !== 'prototype') out[k] = diff[k];
+      });
+      return out;
+    }
     Object.keys(base).forEach(function (k) { out[k] = base[k]; });
     Object.keys(diff).forEach(function (k) {
       if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
