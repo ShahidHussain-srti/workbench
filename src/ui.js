@@ -480,6 +480,12 @@ window.WB = window.WB || {};
     this.baseline = this.ok ? JSON.stringify(this.opts.build()) : null;
   };
 
+  /* Call once start-up has filled in whatever it fills in, so a new design
+     that nobody has touched still counts as untouched. */
+  S.settled = function () {
+    if (this.ok && !this.id && this.baseline !== null) this.baseline = JSON.stringify(this.opts.build());
+  };
+
   /* Open a stored design in this tab, after saving the one on screen. */
   S.open = function (id, done) {
     var p = this._read(id);
