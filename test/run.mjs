@@ -24,6 +24,17 @@ section('base');
 ok(WB.clamp(5, 0, 3) === 3 && WB.clamp(-1, 0, 3) === 0, 'clamp');
 ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
 {
+  const st = { colors: { base: 'url(https://evil.example/x)', lid: '#abc' }, texts: [{ color: 'red;background:url(x)' }, { color: '#112233' }], name: 'url(x)' };
+  WB.cleanColours(st, { colors: { base: '#2f6db5', lid: '#ffffff' } });
+  ok(st.colors.base === '#2f6db5' && st.colors.lid === '#abc' && st.texts[0].color === '#808080' && st.texts[1].color === '#112233' && st.name === 'url(x)',
+     'cleanColours keeps hex colours, resets anything else, leaves other strings');
+  ok(WB.isImageData('data:image/png;base64,iVBORw0KGgo=') && !WB.isImageData('https://evil.example/x.png') &&
+     !WB.isImageData('data:image/svg+xml;base64,PHN2Zz4='), 'isImageData takes inline raster data only');
+  const o = { a: 5000, b: 'x', c: null, d: -3 };
+  WB.clampField(o, 'a', 1, 400, 10); WB.clampField(o, 'b', 1, 400, 10); WB.clampField(o, 'c', 1, 400, 10); WB.clampField(o, 'd', 0, 4, 1);
+  ok(o.a === 400 && o.b === 10 && o.c === null && o.d === 0, 'clampField keeps numbers in range');
+}
+{
   const base = { a: 1, b: { c: 2, d: [1, 2] }, e: 'x' }, obj = { a: 1, b: { c: 3, d: [1, 2] }, e: 'y', f: 0.123456 };
   const d = WB.shareDiff(base, obj);
   ok(JSON.stringify(d) === '{"b":{"c":3},"e":"y","f":0.1235}', 'shareDiff keeps only the changes');
