@@ -1642,7 +1642,7 @@ window.WB = window.WB || {};
     xml.push('<basematerials id="' + MATGROUP + '">');
     slots.forEach(function (sl, i) {
       xml.push('<base name="Colour ' + (i + 1) + '" displaycolor="' +
-               sl.color.toUpperCase() + 'FF"/>');
+               esc(String(sl.color).toUpperCase()) + 'FF"/>');
     });
     xml.push('</basematerials>');
 
@@ -2666,7 +2666,8 @@ window.WB = window.WB || {};
   S.uniqueName = function (base) {
     var self = this, names = this._index().filter(function (d) { return d.id !== self.id; }).map(function (d) { return d.name; });
     if (names.indexOf(base) < 0) return base;
-    for (var i = 2; ; i++) if (names.indexOf(base + ' ' + i) < 0) return base + ' ' + i;
+    var root = base.replace(/ \d+$/, '') || base;           // "case 2" taken → "case 3", not "case 2 2"
+    for (var i = 2; ; i++) if (names.indexOf(root + ' ' + i) < 0) return root + ' ' + i;
   };
 
   S.saveNow = function () {
