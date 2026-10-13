@@ -133,6 +133,24 @@ ok((model.match(/<component /g) || []).length === 3, 'three colour parts as comp
 const extr = [...settings.matchAll(/<part id="(\d+)"[\s\S]*?key="extruder" value="(\d+)"/g)].map(m => m[2]).join();
 ok(extr === '1,2,2', 'extruders numbered densely in order of use (palette 4 → 1, palette 1 → 2)');
 ok(model.includes('name="Colour 1" displaycolor="#FF0000FF"'), 'colour names follow extruder numbers');
+ok(!settings.includes('<plate>'), 'no plates without a bed');
+
+const mfp = await WB.export3MF({ title: 'plates', bed: { w: 200, d: 100 }, objects: [
+  { name: 'base', parts: [cube(0, '#ff0000', 1, 'b')], plate: 1 },
+  { name: 'lid', parts: [cube(20, '#00ff00', 2, 'l')], plate: 3 },
+  { name: 'hook', parts: [cube(40, '#00ff00', 2, 'h')], plate: 3 }
+] });
+const zp = unzip(Buffer.from(await mfp.arrayBuffer()));
+const items = [...zp['3D/3dmodel.model'].matchAll(/<item objectid="(\d+)" transform="(?:\S+ ){9}(\S+) (\S+) (\S+)"/g)].map(m => [+m[2], +m[3], +m[4]]);
+const plates = [...zp['Metadata/model_settings.config'].matchAll(/<plate>([\s\S]*?)<\/plate>/g)].map(m => [...m[1].matchAll(/object_id" value="(\d+)"/g)].map(q => +q[1]));
+ok(plates.length === 2 && plates[0].length === 1 && plates[1].length === 2, 'two plates (numbered without gaps): base alone, lid and hook together');
+// The base, 10 mm wide at x 0..10, is centred on plate 1 (100, 50); lid and hook,
+// together x 20..50, centred on plate 2, which starts 1.2 beds along (x 240).
+ok(near(items[0][0] + 5, 100, 1e-6), 'base centred on plate 1 (x)');
+ok(near(items[0][1] + 5, 50, 1e-6), 'base centred on plate 1 (y)');
+ok(near(items[1][0] + 35, 340, 1e-6), 'lid and hook centred on plate 2');
+ok(items[1][0] === items[2][0] && items[1][1] === items[2][1], 'objects on one plate keep their places relative to each other');
+ok(near(WB.plateOrigin(2, 3, { w: 200, d: 100 }).y, -120, 1e-9), 'a third plate starts a second row');
 ok(pe.includes('firstid="0" lastid="11"') && pe.includes('firstid="12" lastid="23"'), 'PrusaSlicer triangle ranges per object');
 ok(JSON.parse(z['Metadata/project_settings.config']).filament_colour.join() === '#FF0000,#00FF00', 'filament swatches');
 const stl = Buffer.from(await WB.exportSTL([cube(-5, '#000', 0, 'a')], 'hdr').arrayBuffer());

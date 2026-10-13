@@ -15,6 +15,9 @@
  *   Metadata/project_settings.config  filament swatches for both
  *   <basematerials>                   ignored by slicers; used by viewers
  *
+ * Given a bed, model_settings.config also says which plate each object goes on,
+ * and each plate's objects are centred on it where those slicers put it.
+ *
  * A real Bambu file carries no basematerials at all, which is why a file relying
  * on them imports as a single colour.
  */
@@ -59,30 +62,56 @@ window.WB = window.WB || {};
   }
 
   function bounds(parts) {
-    var b = { minX: Infinity, minY: Infinity, minZ: Infinity };
+    var b = { minX: Infinity, minY: Infinity, minZ: Infinity, maxX: -Infinity, maxY: -Infinity };
     parts.forEach(function (part) {
       var p = part.positions;
       for (var i = 0; i < p.length; i += 3) {
         if (p[i] < b.minX) b.minX = p[i];
+        if (p[i] > b.maxX) b.maxX = p[i];
         if (p[i + 1] < b.minY) b.minY = p[i + 1];
+        if (p[i + 1] > b.maxY) b.maxY = p[i + 1];
         if (p[i + 2] < b.minZ) b.minZ = p[i + 2];
       }
     });
-    if (!isFinite(b.minX)) { b.minX = b.minY = b.minZ = 0; }
+    if (!isFinite(b.minX)) { b.minX = b.minY = b.minZ = b.maxX = b.maxY = 0; }
     return b;
   }
+
+  /* ── plates ─────────────────────────────────────────────────────────
+     Slicers with several plates (Bambu Studio, OrcaSlicer, Creality Print)
+     lay them out in a grid, ⌈√n⌉ to a row and a fifth of a bed apart, the
+     rows going towards −y. This is plate i's front-left corner. */
+  WB.plateOrigin = function (i, n, bed) {
+    var cols = Math.ceil(Math.sqrt(n)) || 1;
+    return { x: (i % cols) * bed.w * 1.2, y: -Math.floor(i / cols) * bed.d * 1.2 };
+  };
+  /* The shift that centres what goes on each plate on it: groups[i] is the
+     bounds ({ minX, maxX, minY, maxY }) of plate i's parts, or null. */
+  WB.plateShifts = function (groups, bed) {
+    return groups.map(function (g, i) {
+      var o = WB.plateOrigin(i, groups.length, bed);
+      return g ? { dx: o.x + bed.w / 2 - (g.minX + g.maxX) / 2, dy: o.y + bed.d / 2 - (g.minY + g.maxY) / 2 }
+               : { dx: o.x, dy: o.y };
+    });
+  };
 
   /* opts: {
        app:     'My Tool'                       written as the Application
        title:   'design name'
-       objects: [{ name, parts: [part, …] }]    one printable object each
+       objects: [{ name, parts: [part, …],      one printable object each
+                   plate: 1 }]                  which plate (1 when not given)
+       bed:     { w, d }                        optional, mm
      }
      A part is { positions, indices, color: '#rrggbb', colorIndex, label },
-     already placed where it should print. Objects keep their x/y layout and
-     each rests on the bed. */
+     already placed where it should print. Each object rests on the bed.
+     Without a bed, objects keep their x/y layout from the front-left corner.
+     With one, each plate's objects keep their layout centred on that plate,
+     and the plates are written down for the slicers that have them; the rest
+     see the objects a bed and a bit apart. */
   WB.export3MF = function (opts) {
     var objects = opts.objects.map(function (o) {
-      return { name: o.name, parts: o.parts.filter(function (p) { return p.indices.length; }) };
+      return { name: o.name, plate: Math.max(1, Math.round(o.plate || 1)),
+               parts: o.parts.filter(function (p) { return p.indices.length; }) };
     }).filter(function (o) { return o.parts.length; });
     var parts = [].concat.apply([], objects.map(function (o) { return o.parts; }));
     if (!parts.length) return Promise.reject(new Error('Nothing to export.'));
@@ -123,7 +152,21 @@ window.WB = window.WB || {};
     });
     objects.forEach(function (o) { o.assembly = id++; o.bounds = bounds(o.parts); });
 
-    var all = bounds(parts);
+    var all = bounds(parts), bed = opts.bed && opts.bed.w > 0 && opts.bed.d > 0 ? opts.bed : null;
+    var nPlates = 1, shifts = null;
+    if (bed) {
+      // Plates numbered without gaps, in order, so "plate 3" with nothing on
+      // plate 2 still lands on the second plate.
+      var used = objects.map(function (o) { return o.plate; }).sort(function (a, b) { return a - b; })
+        .filter(function (v, i, a) { return !i || a[i - 1] !== v; });
+      objects.forEach(function (o) { o.plate = used.indexOf(o.plate) + 1; });
+      nPlates = used.length;
+      var groups = used.map(function (pl) {
+        return bounds([].concat.apply([], objects.filter(function (o) { return o.plate === used.indexOf(pl) + 1; })
+                                                 .map(function (o) { return o.parts; })));
+      });
+      shifts = WB.plateShifts(groups, bed);
+    }
 
     var xml = [];
     xml.push('<?xml version="1.0" encoding="UTF-8"?>');
@@ -168,12 +211,13 @@ window.WB = window.WB || {};
     });
     xml.push('</resources>');
 
-    /* Shared x/y offset keeps the objects side by side as laid out; z is per
+    /* Objects on a plate keep their places relative to each other; z is per
        object so each one rests on the bed. */
     xml.push('<build>');
     objects.forEach(function (o) {
+      var sh = shifts ? shifts[o.plate - 1] : { dx: -all.minX, dy: -all.minY };
       xml.push('<item objectid="' + o.assembly + '" transform="1 0 0 0 1 0 0 0 1 ' +
-               num(-all.minX) + ' ' + num(-all.minY) + ' ' + num(-o.bounds.minZ) + '" printable="1"/>');
+               num(sh.dx) + ' ' + num(sh.dy) + ' ' + num(-o.bounds.minZ) + '" printable="1"/>');
     });
     xml.push('</build>');
     xml.push('</model>');
@@ -198,6 +242,22 @@ window.WB = window.WB || {};
       });
       ms2.push('  </object>');
     });
+    // Which plate each object goes on.
+    for (var pl = 1; bed && pl <= nPlates; pl++) {
+      ms2.push('  <plate>');
+      ms2.push('    <metadata key="plater_id" value="' + pl + '"/>');
+      ms2.push('    <metadata key="plater_name" value=""/>');
+      ms2.push('    <metadata key="locked" value="false"/>');
+      objects.forEach(function (o) {
+        if (o.plate !== pl) return;
+        ms2.push('    <model_instance>');
+        ms2.push('      <metadata key="object_id" value="' + o.assembly + '"/>');
+        ms2.push('      <metadata key="instance_id" value="0"/>');
+        ms2.push('      <metadata key="identify_id" value="' + o.assembly + '"/>');
+        ms2.push('    </model_instance>');
+      });
+      ms2.push('  </plate>');
+    }
     ms2.push('</config>');
 
     /* PrusaSlicer / SuperSlicer merge the components into volumes in order, so

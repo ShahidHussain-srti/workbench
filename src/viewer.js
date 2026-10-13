@@ -318,42 +318,48 @@ window.WB = window.WB || {};
 
   /* A print bed drawn under the model: { w, d, cx, cy, z } in mm, or null.
      A faint plate with a 10 mm grid, darker every 50 mm, measured from its
-     centre, and a firm outline. */
+     centre, and a firm outline. For a print over several plates, `at` lists
+     each plate's centre ([{ cx, cy }, …]) and one is drawn at each. */
   WB.Viewer.prototype.setBed = function (b) {
-    var was = this.bed;
+    var was = this.bedBox;
     this.bed = b && b.w > 0 && b.d > 0 ? b : null;
     this._uploadBed();
     // Zoom to suit when it appears, changes size or goes away.
-    if (this.bed ? (!was || was.w !== this.bed.w || was.d !== this.bed.d) : was) this.fit();
+    var now = this.bedBox;
+    if (now ? (!was || Math.abs(was.w - now.w) > 1e-6 || Math.abs(was.d - now.d) > 1e-6) : was) this.fit();
   };
   WB.Viewer.prototype._uploadBed = function () {
-    if (this.failed) return;
     this.bedRanges = null;
+    this.bedBox = null;
     var b = this.bed;
     if (!b) return;
-    var x0 = b.cx - b.w / 2, x1 = b.cx + b.w / 2, y0 = b.cy - b.d / 2, y1 = b.cy + b.d / 2;
-    var zp = b.z - 0.06, zl = b.z - 0.03, v = [];
-    v.push(x0, y0, zp, x1, y0, zp, x1, y1, zp, x0, y0, zp, x1, y1, zp, x0, y1, zp);
-    var grid = function (major) {
-      var n0 = v.length;
+    var at = b.at && b.at.length ? b.at : [{ cx: b.cx, cy: b.cy }];
+    var zp = b.z - 0.06, zl = b.z - 0.03;
+    var plate = [], minor = [], major = [], edge = [], bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    at.forEach(function (c) {
+      var x0 = c.cx - b.w / 2, x1 = c.cx + b.w / 2, y0 = c.cy - b.d / 2, y1 = c.cy + b.d / 2;
+      bx0 = Math.min(bx0, x0); bx1 = Math.max(bx1, x1); by0 = Math.min(by0, y0); by1 = Math.max(by1, y1);
+      plate.push(x0, y0, zp, x1, y0, zp, x1, y1, zp, x0, y0, zp, x1, y1, zp, x0, y1, zp);
       for (var k = -Math.floor(b.w / 20); k <= Math.floor(b.w / 20); k++) {
-        var x = b.cx + k * 10;
-        if ((k % 5 === 0) !== major || x <= x0 + 1e-6 || x >= x1 - 1e-6) continue;
-        v.push(x, y0, zl, x, y1, zl);
+        var x = c.cx + k * 10;
+        if (x <= x0 + 1e-6 || x >= x1 - 1e-6) continue;
+        (k % 5 === 0 ? major : minor).push(x, y0, zl, x, y1, zl);
       }
       for (var j = -Math.floor(b.d / 20); j <= Math.floor(b.d / 20); j++) {
-        var y = b.cy + j * 10;
-        if ((j % 5 === 0) !== major || y <= y0 + 1e-6 || y >= y1 - 1e-6) continue;
-        v.push(x0, y, zl, x1, y, zl);
+        var y = c.cy + j * 10;
+        if (y <= y0 + 1e-6 || y >= y1 - 1e-6) continue;
+        (j % 5 === 0 ? major : minor).push(x0, y, zl, x1, y, zl);
       }
-      return (v.length - n0) / 3;
-    };
-    var minor = grid(false), major = grid(true);
-    v.push(x0, y0, zl, x1, y0, zl, x1, y0, zl, x1, y1, zl, x1, y1, zl, x0, y1, zl, x0, y1, zl, x0, y0, zl);
+      edge.push(x0, y0, zl, x1, y0, zl, x1, y0, zl, x1, y1, zl, x1, y1, zl, x0, y1, zl, x0, y1, zl, x0, y0, zl);
+    });
+    this.bedBox = { x0: bx0, x1: bx1, y0: by0, y1: by1, w: bx1 - bx0, d: by1 - by0, z: b.z };
+    if (this.failed) return;
+    var v = plate.concat(minor, major, edge), n = function (a) { return a.length / 3; };
     var gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bbuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
-    this.bedRanges = { plate: [0, 6], minor: [6, minor], major: [6 + minor, major], edge: [6 + minor + major, 8] };
+    var p = n(plate), mi = n(minor), ma = n(major);
+    this.bedRanges = { plate: [0, p], minor: [p, mi], major: [p + mi, ma], edge: [p + mi + ma, n(edge)] };
   };
 
   /* One GPU texture per atlas, re-uploaded only when the atlas itself changed
@@ -462,7 +468,7 @@ window.WB = window.WB || {};
   /* Fit the bounding sphere in whichever field of view is narrower. */
   WB.Viewer.prototype.fit = function () {
     var aspect = Math.max(0.2, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
-    var r = this.bed ? Math.max(this.radius, Math.hypot(this.bed.w, this.bed.d) / 2 * 0.95) : this.radius;
+    var r = this.bedBox ? Math.max(this.radius, Math.hypot(this.bedBox.w, this.bedBox.d) / 2 * 0.95) : this.radius;
     this.dist = r / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
     this.pan = [0, 0];
     this._framed = this.radius;
@@ -502,8 +508,9 @@ window.WB = window.WB || {};
     // flickering against the lettering on its far side.
     var reach = this.radius * 1.6 + Math.hypot(this.pan[0], this.pan[1]);
     if (this.bedRanges) {                     // keep the whole bed inside the depth range
-      var bd = this.bed;
-      reach = Math.max(reach, Math.hypot(Math.abs(bd.cx - target[0]) + bd.w / 2, Math.abs(bd.cy - target[1]) + bd.d / 2,
+      var bd = this.bedBox;
+      reach = Math.max(reach, Math.hypot(Math.max(Math.abs(bd.x0 - target[0]), Math.abs(bd.x1 - target[0])),
+                                         Math.max(Math.abs(bd.y0 - target[1]), Math.abs(bd.y1 - target[1])),
                                          bd.z - target[2]) + 5);
     }
     var proj = perspective(0.62, w / h, Math.max(this.radius * 0.02, this.dist - reach), this.dist + reach);
