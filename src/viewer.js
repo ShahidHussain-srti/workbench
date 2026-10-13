@@ -470,7 +470,7 @@ window.WB = window.WB || {};
     var aspect = Math.max(0.2, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
     // A lone bed may tuck its corners just out of view; a row of plates may not.
     var bb = this.bedBox, many = this.bed && this.bed.at && this.bed.at.length > 1;
-    var r = bb ? Math.max(this.radius, Math.hypot(bb.w, bb.d) / 2 * (many ? 1.08 : 0.95)) : this.radius;
+    var r = bb ? Math.max(this.radius, Math.hypot(bb.w, bb.d) / 2 * (many ? 1.2 : 0.95)) : this.radius;
     this.dist = r / Math.sin(0.31) / Math.min(1, aspect) * 1.02;
     this.pan = [0, 0];
     this._framed = this.radius;
