@@ -4,7 +4,7 @@
 /* sync.mjs — copy the built library into an app: node tools/sync.mjs ../dabba
  * Apps keep their own copy in vendor/workbench/, so they still work offline,
  * from file://, and from a GitHub "Download ZIP", with no build step. */
-import { copyFileSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -23,6 +23,8 @@ for (const app of apps) {
   for (const f of ['workbench.js', 'workbench.css']) copyFileSync(join(root, 'dist', f), join(out, f));
   for (const f of ['manifold.js', 'manifold.wasm', 'manifold-wasm.js', 'LICENSE-manifold.txt']) copyFileSync(join(root, 'vendor', f), join(out, f));
   copyFileSync(join(root, 'LICENSE'), join(out, 'LICENSE'));
+  mkdirSync(join(out, 'fonts'), { recursive: true });
+  for (const f of readdirSync(join(root, 'fonts'))) copyFileSync(join(root, 'fonts', f), join(out, 'fonts', f));
   writeFileSync(join(out, 'VERSION'), `${pkg.version}${commit ? ' (' + commit + ')' : ''}\n`);
   console.log('synced', pkg.version, commit, '→', out);
 }

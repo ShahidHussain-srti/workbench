@@ -329,6 +329,7 @@ window.WB = window.WB || {};
     if (px < 1) return null;
 
     var lines = content.split('\n');
+    WB.loadFont(tx.font);       // drawn in the fallback until it arrives; the app redraws on 'wbfont'
     var font = (tx.italic ? 'italic ' : '') + (tx.bold ? '700 ' : '400 ') + px + 'px ' +
                WB.fontByKey(WB.fontKey(tx.font)).css;
     var track = tx.tracking * t.s;

@@ -16,7 +16,7 @@ where browsers refuse `fetch()`, its base64 copy `manifold-wasm.js` is loaded in
 | File | What it does |
 |---|---|
 | `base.js` | Small helpers (clamp, paths into objects, ids, debounce), an offscreen canvas pool, the millimetre-to-pixel grid, and coverage masks with union / subtract / intersect |
-| `fonts.js` | System font stacks for text, looked up by key |
+| `fonts.js` | The text fonts, looked up by key; each ships in `fonts/` and loads when a design first uses it |
 | `edt.js` | Distance fields, for offsetting outlines and fitting things inside them |
 | `contour.js` | Marching squares: a mask in, simplified polygons with holes out |
 | `shapes.js` | Outline shapes (rectangle, circle, star, heart, shield…) drawn to a canvas |
@@ -96,3 +96,7 @@ warranty. See [LICENSE](LICENSE) for the full text.
 `vendor/manifold.js`, `manifold.wasm` and `manifold-wasm.js` are
 [Manifold](https://github.com/elalish/manifold), © The Manifold Authors, under the Apache License 2.0 ([vendor/LICENSE-manifold.txt](vendor/LICENSE-manifold.txt)),
 which is compatible with the GPL.
+
+`fonts/` holds 67 Google Fonts, each the Latin subset of its regular weight wrapped in a
+small script (so it loads from `file://` too), under the SIL Open Font License 1.1 or the
+Apache License 2.0; the texts are in [fonts/LICENSE-fonts.txt](fonts/LICENSE-fonts.txt).

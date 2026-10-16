@@ -157,6 +157,22 @@ const stl = Buffer.from(await WB.exportSTL([cube(-5, '#000', 0, 'a')], 'hdr').ar
 let minx = 1e9; for (let t = 0; t < 12; t++) for (let k = 0; k < 3; k++) minx = Math.min(minx, stl.readFloatLE(84 + t * 50 + 12 + k * 12));
 ok(stl.readUInt32LE(80) === 12 && minx === 0 && stl.slice(0, 3).toString() === 'hdr', 'STL: 12 triangles, moved to the origin, header');
 
+section('fonts');
+{
+  const keys = WB.FONTS.map(f => f.key);
+  ok(new Set(keys).size === keys.length, 'font keys are unique');
+  ok(new Set(WB.FONTS.map(f => f.name)).size === keys.length, 'font names are unique');
+  const missing = keys.filter(k => { try { return !readFileSync(join(root, 'fonts', k + '.js'), 'utf8').startsWith("WB.fontData('" + k + "','"); } catch { return true; } });
+  ok(!missing.length, 'every font ships its file' + (missing.length ? ': missing ' + missing.join(', ') : ''));
+  const older = ['grotesk', 'neue', 'futura', 'optima', 'rounded', 'condensed', 'wideblack', 'serif', 'baskerville', 'cochin', 'elegant',
+    'slab', 'clarendon', 'copperplate', 'impact', 'stencil', 'phosphate', 'playbill', 'luminari', 'herculanum', 'papyrus', 'jazz', 'party',
+    'krungthep', 'bauhaus', 'script', 'savoye', 'zapfino', 'signpainter', 'trattatello', 'hand', 'noteworthy', 'marker', 'chalk',
+    'chalkboard', 'comic', 'skia', 'mono', 'typewriter', 'moto-cruiser', 'moto-race', 'moto-condensed', 'moto-touring', 'moto-geo',
+    'moto-heritage', 'moto-script', 'moto-enduro'];
+  ok(older.every(k => keys.includes(k)), 'every key saved designs may use is still there');
+  ok(WB.fontKey(3) === 'wideblack' && WB.fontKey('nope') === keys[0], 'legacy index and unknown keys resolve');
+}
+
 section('share links');
 const design = { app: 'test', state: { name: 'pump case', list: [1, 2, 3], nested: { a: 'ü✓' } } };
 const hash = await WB.shareEncode(design);
