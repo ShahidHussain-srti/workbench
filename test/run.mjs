@@ -30,6 +30,10 @@ ok(WB.tidy(0.1 + 0.2) === 0.3, 'tidy removes float dust');
      'cleanColours keeps hex colours, resets anything else, leaves other strings');
   ok(WB.isImageData('data:image/png;base64,iVBORw0KGgo=') && !WB.isImageData('https://evil.example/x.png') &&
      !WB.isImageData('data:image/svg+xml;base64,PHN2Zz4='), 'isImageData takes inline raster data only');
+  ok(WB.isImageURL('https://example.com/a.png?x=1') && !WB.isImageURL('http://x.test/p') &&
+     !WB.isImageURL('javascript:alert(1)') && !WB.isImageURL('data:image/png;base64,AAAA') &&
+     !WB.isImageURL('https://x.test/a b') && !WB.isImageURL('https://x.test/"onerror=') && !WB.isImageURL(5),
+     'isImageURL takes plain https links only');
   const o = { a: 5000, b: 'x', c: null, d: -3 };
   WB.clampField(o, 'a', 1, 400, 10); WB.clampField(o, 'b', 1, 400, 10); WB.clampField(o, 'c', 1, 400, 10); WB.clampField(o, 'd', 0, 4, 1);
   ok(o.a === 400 && o.b === 10 && o.c === null && o.d === 0, 'clampField keeps numbers in range');
