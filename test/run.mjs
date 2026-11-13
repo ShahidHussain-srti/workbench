@@ -193,6 +193,11 @@ section('multi-colour pictures');
   ok(sep.length === 4, 'keeps near colours apart with no merging');
   ok(crushed.length === 3 && crushed[1].count === 27, 'crushes the two reds into one');
   ok(crushed[0].hex === '#FFFFFF' && crushed[0].edge === 36, 'biggest first, border pixels counted');
+  const rec = { '#1E3CDC': '#00FF00', '#D01E1E': '', '#ABCDEF': 'url(x)' };
+  ok(WB.recolorOf(rec, '#1E3CDC') === '#00FF00' && WB.recolorOf(rec, '#1F3DDB') === '#00FF00' &&
+     WB.recolorOf(rec, '#CF1F1E') === '' && WB.recolorOf(rec, '#FFFFFF') === undefined &&
+     WB.recolorOf(rec, '#ABCDEF') === undefined && WB.recolorOf(rec, '#ABCDEE') === undefined,
+     'a saved recolour still applies to a colour a shade off; junk is ignored');
   ok(WB.quantizeColors(d, w, 0, 2).reduce((s, g) => s + g.count, 0) === 100, 'a colour cap keeps every pixel');
 }
 
