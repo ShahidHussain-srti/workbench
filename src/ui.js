@@ -8,6 +8,8 @@
  *   WB.History(opts)              undo / redo with coalesced bursts
  *   WB.Session(opts)              designs kept in localStorage, one per tab
  *   WB.designsMenu(opts)          the list of them, to open, start, copy or delete
+ *   WB.swatches(used)             a strip of quick colours under every colour field
+ *   WB.artPaletteEditor(...)      the colours of a multi-colour picture, each re-pickable
  */
 window.WB = window.WB || {};
 (function (WB) {
@@ -839,6 +841,116 @@ window.WB = window.WB || {};
     return f.d <= bed.w + e && f.w <= bed.d + e
       ? { level: 'warn', msg: what + ' (' + size + ') fits the ' + on + ' only turned a quarter; turn it in your slicer.' }
       : { level: 'warn', msg: what + ' (' + size + ') is bigger than the ' + on + '. ' + advice };
+  };
+
+  /* ── global swatches ────────────────────────────────────────────────
+     Every input.colorfield gets a strip under it: the colours the design
+     already uses, then the ones saved in this browser (shared by every tool on
+     the same site). Click one to use it, + saves the field's colour,
+     right-click a saved one to forget it. Call with the colours in use whenever
+     they change; with no argument it just repaints, e.g. after adding fields. */
+  var SW_KEY = 'wb.swatches', swUsed = [], HEXRE = /^#[0-9A-F]{6}$/;
+  function swSaved() {
+    try {
+      var v = JSON.parse(localStorage.getItem(SW_KEY));
+      return Array.isArray(v) ? v.filter(function (c) { return HEXRE.test(c); }) : [];
+    } catch (e) { return []; }
+  }
+  function swStore(list) {
+    try { localStorage.setItem(SW_KEY, JSON.stringify(list)); } catch (e) { /* private mode: not kept */ }
+    WB.swatches();
+  }
+  function swButton(hex, title) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 's'; b.style.background = hex;
+    b.title = title; b.setAttribute('aria-label', title);
+    return b;
+  }
+  WB.swatches = function (used) {
+    if (used) swUsed = used.map(function (c) { return String(c).toUpperCase(); });
+    var saved = swSaved(), sig = swUsed.join() + '|' + saved.join();
+    document.querySelectorAll('input.colorfield').forEach(function (inp) {
+      var strip = inp._swatches;
+      if (!strip) {
+        strip = inp._swatches = document.createElement('div');
+        strip.className = 'swatchrow';
+        inp.insertAdjacentElement('afterend', strip);
+      }
+      if (strip._sig === sig) return;
+      strip._sig = sig;
+      strip.innerHTML = '';
+      var pick = function (hex) {
+        if (inp.disabled) return;
+        inp.value = hex.toLowerCase();
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      swUsed.forEach(function (c) {
+        var b = swButton(c, c + ' — in this design');
+        b.addEventListener('click', function () { pick(c); });
+        strip.appendChild(b);
+      });
+      saved.forEach(function (c) {
+        var b = swButton(c, c + ' — saved; right-click to forget');
+        b.classList.add('saved');
+        b.addEventListener('click', function () { pick(c); });
+        b.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          swStore(swSaved().filter(function (x) { return x !== c; }));
+        });
+        strip.appendChild(b);
+      });
+      var add = document.createElement('button');
+      add.type = 'button'; add.className = 's add'; add.textContent = '+';
+      add.title = 'Save this colour as a swatch'; add.setAttribute('aria-label', add.title);
+      add.addEventListener('click', function () {
+        var c = inp.value.toUpperCase(), list = swSaved();
+        if (list.indexOf(c) < 0) swStore(list.concat(c));
+      });
+      strip.appendChild(add);
+    });
+  };
+
+  /* ── multi-colour picture ───────────────────────────────────────────
+     One row per colour found in the picture: what it prints as, or Skip.
+     getArt() returns the picture being edited; edit(fn) wraps a change the
+     way the app does (begin an undo step, fn(art), rebuild). Cheap to call on
+     every repaint: it redraws only when the colours change. */
+  WB.artPaletteEditor = function (box, getArt, edit) {
+    var art = getArt();
+    var pal = art && WB.resolveArtMode(art) === 'colors' ? WB.artPalette(art) : [];
+    var sig = JSON.stringify(pal);
+    if (box._sig === sig) return;
+    box._sig = sig;
+    box.innerHTML = '';
+    var set = function (src, v) {
+      edit(function (a) { var r = Object.assign({}, a.recolor); r[src] = v; a.recolor = r; });
+    };
+    pal.forEach(function (p) {
+      var row = document.createElement('div');
+      row.className = 'row palrow';
+      var found = document.createElement('span');
+      found.className = 'found'; found.style.background = p.src;
+      found.title = 'Found in the picture: ' + p.src;
+      var inp = document.createElement('input');
+      inp.type = 'color'; inp.className = 'colorfield';
+      inp.value = (p.out || p.src).toLowerCase();
+      inp.disabled = !p.out;
+      inp.setAttribute('aria-label', 'Print ' + p.src + ' as');
+      inp.addEventListener('change', function () { set(p.src, inp.value.toUpperCase()); });
+      var lab = document.createElement('label');
+      lab.className = 'chk';
+      var skip = document.createElement('input');
+      skip.type = 'checkbox'; skip.checked = !p.out;
+      skip.addEventListener('change', function () { set(p.src, skip.checked ? '' : p.src); });
+      lab.appendChild(skip); lab.appendChild(document.createTextNode(' Skip'));
+      var pick = document.createElement('div');
+      pick.className = 'pick';
+      pick.appendChild(inp);
+      row.appendChild(found); row.appendChild(pick); row.appendChild(lab);
+      box.appendChild(row);
+    });
+    WB.swatches();
   };
 
 })(window.WB);

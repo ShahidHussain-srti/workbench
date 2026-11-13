@@ -20,14 +20,14 @@ where browsers refuse `fetch()`, its base64 copy `manifold-wasm.js` is loaded in
 | `edt.js` | Distance fields, for offsetting outlines and fitting things inside them |
 | `contour.js` | Marching squares: a mask in, simplified polygons with holes out |
 | `shapes.js` | Outline shapes (rectangle, circle, star, heart, shield…) drawn to a canvas |
-| `decor.js` | Decoration as masks: 16 border styles, text boxes and pictures |
+| `decor.js` | Decoration as masks: 16 border styles, text boxes and pictures, including multi-colour pictures split into one layer per colour |
 | `export.js` | Multi-colour 3MF that Bambu Studio, OrcaSlicer, Creality Print and PrusaSlicer open with colours assigned, plus binary STL |
 | `zip.js` | The small ZIP writer the 3MF needs |
 | `share.js` | Designs packed into a link (`#d=…`), the share popup, and clipboard helpers |
 | `drawpad.js` | A freehand drawing pad in a modal |
 | `viewer.js` | A WebGL viewer with orbit controls, smooth shading within a crease angle, bump-shaded textures, overlay lines, and hooks for posing parts and handling clicks |
 | `engine.js` | Starts the bundled [Manifold](https://github.com/elalish/manifold) geometry engine (`WB.loadManifold()`) and turns its solids into parts |
-| `ui.js` | Number fields you can drag like Unity's inspector, the warnings strip, undo/redo, and saving the design across refreshes |
+| `ui.js` | Number fields you can drag like Unity's inspector, the warnings strip, undo/redo, saving the design across refreshes, swatch strips under every colour field, and the colour list of a multi-colour picture |
 | `css/workbench.css` | The shared look: colour tokens with a light theme, panels, form controls, panes, popups |
 
 ## Using it in an app

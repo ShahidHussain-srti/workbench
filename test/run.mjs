@@ -173,6 +173,25 @@ section('fonts');
   ok(WB.fontKey(3) === 'wideblack' && WB.fontKey('nope') === keys[0], 'legacy index and unknown keys resolve');
 }
 
+section('multi-colour pictures');
+{
+  // 10×10: white border/background, a red block, a slightly different red block, a blue speck-free block.
+  const w = 10, d = new Uint8ClampedArray(w * w * 4);
+  for (let i = 0; i < w * w; i++) {
+    const x = i % w, y = (i / w) | 0;
+    let c = [255, 255, 255];
+    if (x >= 2 && x < 5 && y >= 2 && y < 8) c = [220, 30, 30];
+    if (x >= 5 && x < 8 && y >= 2 && y < 5) c = [210, 40, 35];
+    if (x >= 5 && x < 8 && y >= 5 && y < 8) c = [30, 60, 220];
+    d.set([...c, 255], i * 4);
+  }
+  const sep = WB.quantizeColors(d, w, 0, 8), crushed = WB.quantizeColors(d, w, 10, 8);
+  ok(sep.length === 4, 'keeps near colours apart with no merging');
+  ok(crushed.length === 3 && crushed[1].count === 27, 'crushes the two reds into one');
+  ok(crushed[0].hex === '#FFFFFF' && crushed[0].edge === 36, 'biggest first, border pixels counted');
+  ok(WB.quantizeColors(d, w, 0, 2).reduce((s, g) => s + g.count, 0) === 100, 'a colour cap keeps every pixel');
+}
+
 section('share links');
 const design = { app: 'test', state: { name: 'pump case', list: [1, 2, 3], nested: { a: 'ü✓' } } };
 const hash = await WB.shareEncode(design);
